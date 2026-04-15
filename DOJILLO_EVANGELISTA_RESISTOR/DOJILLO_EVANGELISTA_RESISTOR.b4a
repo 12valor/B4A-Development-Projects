@@ -1,0 +1,255 @@
+﻿Build1=Default,b4a.example
+File1=Layout.bal
+File2=SELECT BAND1 COLOR (1).png
+File3=SELECT BAND1 COLOR (2).png
+File4=SELECT BAND1 COLOR.png
+FileGroup1=Default Group
+FileGroup2=Default Group
+FileGroup3=Default Group
+FileGroup4=Default Group
+Group=Default Group
+Library1=core
+Library2=xui
+Library3=xui views
+ManifestCode='This code will be applied to the manifest file during compilation.~\n~'You do not need to modify it in most cases.~\n~'See this link for for more information: https://www.b4x.com/forum/showthread.php?p=78136~\n~AddManifestText(~\n~<uses-sdk android:minSdkVersion="21" android:targetSdkVersion="35"/>~\n~<supports-screens android:largeScreens="true" ~\n~    android:normalScreens="true" ~\n~    android:smallScreens="true" ~\n~    android:anyDensity="true"/>)~\n~SetApplicationAttribute(android:icon, "@drawable/icon")~\n~SetApplicationAttribute(android:label, "$LABEL$")~\n~CreateResourceFromFile(Macro, Themes.LightTheme)~\n~'End of default text.~\n~
+Module1=Starter
+NumberOfFiles=4
+NumberOfLibraries=3
+NumberOfModules=1
+Version=13.4
+@EndOfDesignText@
+#Region  Project Attributes 
+	#ApplicationLabel: Resistor Calculator
+	#VersionCode: 1
+	#VersionName: 
+	#SupportedOrientations: portrait
+	#CanInstallToExternalStorage: False
+#End Region
+
+#Region  Activity Attributes 
+	#FullScreen: False
+	#IncludeTitle: True
+#End Region
+
+Sub Process_Globals
+	Private xui As XUI
+End Sub
+
+Sub Globals
+	' UI Views
+	Private btnBlack, btnBlue, btnBrown, btnConfirm, btnGold, btnGray, btnGreen As Button
+	Private btnOrange, btnRed, btnSilver, btnViolet, btnWhite, btnYellow As Button
+	Private ImageView1 As ImageView
+	Private lblInstruction, lblResult As Label
+	Private Panel1, pnlBand1, pnlBand2, pnlMultiplier, pnlTolerance As Panel
+	
+	' Array for button text updates
+	Private ColorButtons() As Button
+	
+	' State & Math Variables
+	Private CurrentStep As Int = 1
+	Private TempColorName As String = ""
+	Private TempColorValue As Int
+	
+	Private Digit1, Digit2 As Int
+	Private Multiplier As Double = 1
+	Private Tolerance As String = ""
+	
+	' Maps
+	Private DigitValues, MultiplierValues, ToleranceValues, ColorMap As Map
+End Sub
+
+Sub Activity_Create(FirstTime As Boolean)
+	Activity.LoadLayout("Layout")
+	
+	' Initialize Maps
+	DigitValues.Initialize
+	MultiplierValues.Initialize
+	ToleranceValues.Initialize
+	ColorMap.Initialize
+	
+	' 1. Setup the Color Mappings
+	Dim ColorNames() As String = Array As String("Black", "Brown", "Red", "Orange", "Yellow", "Green", "Blue", "Violet", "Gray", "White", "Gold", "Silver")
+	
+	ColorMap.Put("Black", Colors.Black)
+	ColorMap.Put("Brown", Colors.RGB(139, 69, 19))
+	ColorMap.Put("Red", Colors.Red)
+	ColorMap.Put("Orange", Colors.RGB(255, 165, 0))
+	ColorMap.Put("Yellow", Colors.Yellow)
+	ColorMap.Put("Green", Colors.Green)
+	ColorMap.Put("Blue", Colors.Blue)
+	ColorMap.Put("Violet", Colors.RGB(148, 0, 211))
+	ColorMap.Put("Gray", Colors.Gray)
+	ColorMap.Put("White", Colors.White)
+	ColorMap.Put("Gold", Colors.RGB(212, 175, 55))
+	ColorMap.Put("Silver", Colors.RGB(192, 192, 192))
+
+	' 2. Math Setup
+	Dim DigitNums() As Int = Array As Int(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 0)
+	Dim Mults() As Double = Array As Double(1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 0.1, 0.01)
+	
+	For i = 0 To ColorNames.Length - 1
+		DigitValues.Put(ColorNames(i), DigitNums(i))
+		MultiplierValues.Put(ColorNames(i), Mults(i))
+	Next
+	
+	' Tolerance setup
+	ToleranceValues.Put("Brown", "±1%")
+	ToleranceValues.Put("Red", "±2%")
+	ToleranceValues.Put("Orange", "±3%")
+	ToleranceValues.Put("Yellow", "±4%")
+	ToleranceValues.Put("Green", "±0.5%")
+	ToleranceValues.Put("Blue", "±0.25%")
+	ToleranceValues.Put("Violet", "±0.1%")
+	ToleranceValues.Put("Gray", "±0.05%")
+	ToleranceValues.Put("Gold", "±5%")
+	ToleranceValues.Put("Silver", "±10%")
+
+	' 3. Setup Buttons Array
+	ColorButtons = Array As Button(btnBlack, btnBrown, btnRed, btnOrange, btnYellow, btnGreen, btnBlue, btnViolet, btnGray, btnWhite, btnGold, btnSilver)
+	
+	For i = 0 To ColorButtons.Length - 1
+		ColorButtons(i).Tag = ColorNames(i)
+	Next
+	
+	ResetApp
+End Sub
+
+' --- CLICK LOGIC ---
+
+Sub ColorBtn_Click
+	Dim ClickedButton As Button = Sender
+	TempColorName = ClickedButton.Tag
+	TempColorValue = ColorMap.Get(TempColorName)
+	UpdateBandColor(CurrentStep, TempColorValue)
+End Sub
+
+Sub btnConfirm_Click
+	If btnConfirm.Text = "AGAIN" Then
+		ResetApp
+		Return
+	End If
+	
+	If TempColorName = "" Then
+		xui.MsgboxAsync("Please select a color first!", "Selection Required")
+		Return
+	End If
+	
+	Select CurrentStep
+		Case 1: Digit1 = DigitValues.Get(TempColorName)
+		Case 2: Digit2 = DigitValues.Get(TempColorName)
+		Case 3: Multiplier = MultiplierValues.Get(TempColorName)
+		Case 4: Tolerance = ToleranceValues.Get(TempColorName)
+	End Select
+	
+	CurrentStep = CurrentStep + 1
+	TempColorName = ""
+	
+	If CurrentStep > 4 Then
+		CalculateOhms
+		lblInstruction.Text = "Calculation Complete!"
+		btnConfirm.Text = "AGAIN"
+		
+		For Each b As Button In ColorButtons
+			b.Enabled = False
+			Dim v As B4XView = b
+			v.Alpha = 0.3
+		Next
+	Else
+		UpdateStepUI
+	End If
+End Sub
+
+' --- HELPER SUBS ---
+
+Sub UpdateBandColor(BandStep As Int, SelectedColor As Int)
+	' 80% Opacity (0xCC) to blend with the resistor image
+	Dim SemiTransparent As Int = Bit.Or(0xCC000000, SelectedColor)
+	Dim v As B4XView
+	
+	Select BandStep
+		Case 1: v = pnlBand1
+		Case 2: v = pnlBand2
+		Case 3: v = pnlMultiplier
+		Case 4: v = pnlTolerance
+	End Select
+	
+	If v.IsInitialized Then
+		v.Color = SemiTransparent
+		v.Visible = True
+		v.BringToFront
+	End If
+End Sub
+
+Sub UpdateStepUI
+	Select CurrentStep
+		Case 2: lblInstruction.Text = "Pick 2nd band color"
+		Case 3: lblInstruction.Text = "Pick multiplier color"
+		Case 4: lblInstruction.Text = "Pick tolerance color"
+	End Select
+	UpdateButtonLabels(CurrentStep)
+End Sub
+
+Sub UpdateButtonLabels(BandStep As Int)
+	Dim Labels() As String
+	Dim EnabledStates() As Boolean
+	
+	Select BandStep
+		Case 1, 2
+			Labels = Array As String("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "", "")
+			EnabledStates = Array As Boolean(True, True, True, True, True, True, True, True, True, True, False, False)
+		Case 3
+			' Improved symbols for multipliers
+			Labels = Array As String("x1", "x10", "x100", "x1k", "x10k", "x100k", "x1M", "x10M", "x100M", "x1G", "x0.1", "x0.01")
+			EnabledStates = Array As Boolean(True, True, True, True, True, True, True, True, True, True, True, True)
+		Case 4
+			Labels = Array As String("", "±1%", "±2%", "±3%", "±4%", "±0.5%", "±0.25%", "±0.1%", "±0.05%", "", "±5%", "±10%")
+			EnabledStates = Array As Boolean(False, True, True, True, True, True, True, True, True, False, True, True)
+	End Select
+	
+	For i = 0 To ColorButtons.Length - 1
+		ColorButtons(i).Text = Labels(i)
+		ColorButtons(i).Enabled = EnabledStates(i)
+		
+		Dim v As B4XView = ColorButtons(i)
+		If EnabledStates(i) = True Then
+			v.Alpha = 1.0
+		Else
+			v.Alpha = 0.3
+		End If
+	Next
+End Sub
+
+Sub CalculateOhms
+	Dim BaseValue As Double = (Digit1 * 10) + Digit2
+	Dim FinalOhms As Double = BaseValue * Multiplier
+	Dim FormattedText As String
+	
+	' Standardized Engineering Notation with Greek Symbols
+	If FinalOhms >= 1000000000 Then
+		FormattedText = NumberFormat2(FinalOhms / 1000000000, 1, 2, 0, False) & " GΩ"
+	Else If FinalOhms >= 1000000 Then
+		FormattedText = NumberFormat2(FinalOhms / 1000000, 1, 2, 0, False) & " MΩ"
+	Else If FinalOhms >= 1000 Then
+		FormattedText = NumberFormat2(FinalOhms / 1000, 1, 2, 0, False) & " kΩ"
+	Else
+		FormattedText = NumberFormat2(FinalOhms, 1, 2, 0, False) & " Ω"
+	End If
+	
+	lblResult.Text = FormattedText & " " & Tolerance
+End Sub
+
+Sub ResetApp
+	CurrentStep = 1
+	TempColorName = ""
+	lblInstruction.Text = "Pick 1st band color"
+	lblResult.Text = ""
+	btnConfirm.Text = "CONFIRM"
+	
+	pnlBand1.Color = Colors.Transparent
+	pnlBand2.Color = Colors.Transparent
+	pnlMultiplier.Color = Colors.Transparent
+	pnlTolerance.Color = Colors.Transparent
+	
+	UpdateButtonLabels(1)
+End Sub

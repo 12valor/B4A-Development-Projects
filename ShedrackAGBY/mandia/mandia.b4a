@@ -1,0 +1,109 @@
+﻿Build1=Default,b4a.example
+File1=Layout.bal
+FileGroup1=Default Group
+Group=Default Group
+Library1=core
+Library2=xui
+ManifestCode='This code will be applied to the manifest file during compilation.~\n~'You do not need to modify it in most cases.~\n~'See this link for for more information: https://www.b4x.com/forum/showthread.php?p=78136~\n~AddManifestText(~\n~<uses-sdk android:minSdkVersion="21" android:targetSdkVersion="35"/>~\n~<supports-screens android:largeScreens="true" ~\n~    android:normalScreens="true" ~\n~    android:smallScreens="true" ~\n~    android:anyDensity="true"/>)~\n~SetApplicationAttribute(android:icon, "@drawable/icon")~\n~SetApplicationAttribute(android:label, "$LABEL$")~\n~CreateResourceFromFile(Macro, Themes.LightTheme)~\n~'End of default text.~\n~
+Module1=Starter
+NumberOfFiles=1
+NumberOfLibraries=2
+NumberOfModules=1
+Version=13.4
+@EndOfDesignText@
+#Region  Project Attributes 
+	#ApplicationLabel: Conversion Calculator
+	#VersionCode: 1
+	#VersionName: 
+	#SupportedOrientations: unspecified
+	#CanInstallToExternalStorage: False
+#End Region
+
+#Region  Activity Attributes 
+	#FullScreen: False
+	#IncludeTitle: True
+#End Region
+
+Sub Process_Globals
+	Private xui As XUI
+End Sub
+
+Sub Globals
+	Private Button1 As Button
+	Private EditText1 As EditText
+	Private Measurements As Spinner
+End Sub
+
+Sub Activity_Create(FirstTime As Boolean)
+	Activity.LoadLayout("Layout")
+	
+	' Brand new set of measurement categories
+	Measurements.Add("Kilograms and Pounds")
+	Measurements.Add("Centimeters and Inches")
+	Measurements.Add("Celsius and Fahrenheit")
+	Measurements.Add("Kilometers and Miles")
+	Measurements.Add("Hectares and Acres")
+End Sub
+
+Sub Activity_Resume
+End Sub
+
+Sub Activity_Pause (UserClosed As Boolean)
+End Sub
+
+Sub Button1_Click
+	If EditText1.Text = "" Then
+		xui.MsgboxAsync("Please enter a value", "Error")
+		Return
+	End If
+	
+	Dim value As Double = EditText1.Text
+	Dim forwardResult As Double
+	Dim reverseResult As Double
+	Dim selected As String = Measurements.SelectedItem
+	Dim output As String
+	
+	Select selected
+		
+		Case "Kilograms and Pounds"
+			' 1 kg = 2.20462 lbs
+			forwardResult = value * 2.20462
+			reverseResult = value / 2.20462
+			output = value & " kg = " & NumberFormat(forwardResult, 1, 2) & " lbs" & CRLF & _
+					 value & " lbs = " & NumberFormat(reverseResult, 1, 2) & " kg"
+		
+		Case "Centimeters and Inches"
+			' 1 inch = 2.54 cm
+			forwardResult = value / 2.54
+			reverseResult = value * 2.54
+			output = value & " cm = " & NumberFormat(forwardResult, 1, 2) & " in" & CRLF & _
+					 value & " in = " & NumberFormat(reverseResult, 1, 2) & " cm"
+		
+		Case "Celsius and Fahrenheit"
+			' Unique logic needed for temperature scales
+			forwardResult = (value * 9 / 5) + 32
+			reverseResult = (value - 32) * 5 / 9
+			output = value & " °C = " & NumberFormat(forwardResult, 1, 2) & " °F" & CRLF & _
+					 value & " °F = " & NumberFormat(reverseResult, 1, 2) & " °C"
+		
+		Case "Kilometers and Miles"
+			' 1 km = 0.621371 miles
+			forwardResult = value * 0.621371
+			reverseResult = value / 0.621371
+			output = value & " km = " & NumberFormat(forwardResult, 1, 2) & " mi" & CRLF & _
+					 value & " mi = " & NumberFormat(reverseResult, 1, 2) & " km"
+		
+		Case "Hectares and Acres"
+			' 1 hectare = 2.47105 acres
+			forwardResult = value * 2.47105
+			reverseResult = value / 2.47105
+			output = value & " ha = " & NumberFormat(forwardResult, 1, 2) & " ac" & CRLF & _
+					 value & " ac = " & NumberFormat(reverseResult, 1, 2) & " ha"
+		
+		Case Else
+			xui.MsgboxAsync("Please select a conversion", "Error")
+			Return
+	End Select
+	
+	xui.MsgboxAsync(output, "Result")
+End Sub
