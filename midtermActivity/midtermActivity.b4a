@@ -1,0 +1,699 @@
+﻿Build1=Default,b4a.example
+File1=cm_to_meter.bal
+File2=feet_to_inches.bal
+File3=inches_to_cm.bal
+File4=inches_to_feet.bal
+File5=Layout.bal
+File6=main.bal
+File7=meter_to_cm.bal
+FileGroup1=Default Group
+FileGroup2=Default Group
+FileGroup3=Default Group
+FileGroup4=Default Group
+FileGroup5=Default Group
+FileGroup6=Default Group
+FileGroup7=Default Group
+Group=Default Group
+Library1=core
+Library2=xui
+Library3=b4xdrawer
+ManifestCode='This code will be applied to the manifest file during compilation.~\n~'You do not need to modify it in most cases.~\n~'See this link for for more information: https://www.b4x.com/forum/showthread.php?p=78136~\n~AddManifestText(~\n~<uses-sdk android:minSdkVersion="21" android:targetSdkVersion="35"/>~\n~<supports-screens android:largeScreens="true" ~\n~    android:normalScreens="true" ~\n~    android:smallScreens="true" ~\n~    android:anyDensity="true"/>)~\n~SetApplicationAttribute(android:icon, "@drawable/icon")~\n~SetApplicationAttribute(android:label, "$LABEL$")~\n~CreateResourceFromFile(Macro, Themes.LightTheme)~\n~'End of default text.~\n~
+Module1=CmToMeter
+Module2=FeetToInches
+Module3=InchesToCm
+Module4=InchesToFeet
+Module5=MeterToCm
+Module6=Starter
+NumberOfFiles=7
+NumberOfLibraries=3
+NumberOfModules=6
+Version=13.4
+@EndOfDesignText@
+#Region  Project Attributes
+	#ApplicationLabel: Multi-Page Unit Converter
+	#VersionCode: 1
+	#VersionName:
+	#SupportedOrientations: portrait
+	#CanInstallToExternalStorage: False
+#End Region
+
+#Region  Activity Attributes
+	#FullScreen: False
+	#IncludeTitle: False
+#End Region
+
+Sub Process_Globals
+	Private xui As XUI
+End Sub
+
+Sub Globals
+	Private btnMenu As Button
+	Private lblTitle As Label
+	
+	Private sidePanel As Panel
+	Private overlayPanel As Panel
+	Private isMenuOpen As Boolean = False
+	Private menuWidth As Int = 265dip
+	
+	Private currentPage As String = "main"
+	Private currentConversion As String
+	
+	Private pageRoot As Panel
+	
+	Private value1 As EditText
+	Private value2 As EditText
+	Private btnResult As Button
+	Private btnBack As Label
+	
+	'Cozy maroon theme
+	Private primaryMaroon As Int = Colors.RGB(112, 28, 46)
+	Private darkMaroon As Int = Colors.RGB(73, 18, 31)
+	Private softMaroon As Int = Colors.RGB(145, 52, 72)
+	Private warmCream As Int = Colors.RGB(253, 247, 241)
+	Private cardCream As Int = Colors.RGB(255, 251, 247)
+	Private softPink As Int = Colors.RGB(248, 226, 226)
+	Private mutedText As Int = Colors.RGB(125, 91, 91)
+	Private darkText As Int = Colors.RGB(55, 35, 38)
+End Sub
+
+Sub Activity_Create(FirstTime As Boolean)
+	LoadMainPage
+End Sub
+
+Sub Activity_Resume
+
+End Sub
+
+Sub Activity_Pause (UserClosed As Boolean)
+
+End Sub
+
+'========================
+' MAIN PAGE
+'========================
+
+Sub LoadMainPage
+	Activity.RemoveAllViews
+	Activity.Color = warmCream
+	Activity.LoadLayout("main")
+	currentPage = "main"
+	isMenuOpen = False
+	
+	BuildMainUI
+	CreateSideMenu
+	
+	btnMenu.BringToFront
+End Sub
+
+Sub BuildMainUI
+	StyleMenuButtonNormal
+	
+	'Header background
+	Dim topPanel As Panel
+	topPanel.Initialize("")
+	SetPanelBackground(topPanel, darkMaroon, 0)
+	Activity.AddView(topPanel, 0, 0, 100%x, 245dip)
+	
+	'Soft decorative circles
+	Dim circle1 As Panel
+	circle1.Initialize("")
+	SetPanelBackground(circle1, Colors.ARGB(45, 255, 255, 255), 100dip)
+	topPanel.AddView(circle1, 100%x - 95dip, 25dip, 130dip, 130dip)
+	
+	Dim circle2 As Panel
+	circle2.Initialize("")
+	SetPanelBackground(circle2, Colors.ARGB(30, 255, 255, 255), 80dip)
+	topPanel.AddView(circle2, -45dip, 155dip, 115dip, 115dip)
+	
+	'Big title
+	Dim appTitle As Label
+	appTitle.Initialize("")
+	appTitle.Text = "Multi-Page" & CRLF & "Unit Converter"
+	appTitle.TextSize = 31
+	appTitle.TextColor = Colors.White
+	appTitle.Typeface = Typeface.DEFAULT_BOLD
+	appTitle.Gravity = Gravity.CENTER_VERTICAL
+	topPanel.AddView(appTitle, 24dip, 92dip, 100%x - 48dip, 82dip)
+	
+	'Name only
+	Dim nameLabel As Label
+	nameLabel.Initialize("")
+	nameLabel.Text = "AG D. Evangelista"
+	nameLabel.TextSize = 16
+	nameLabel.TextColor = Colors.RGB(235, 205, 210)
+	nameLabel.Typeface = Typeface.DEFAULT_BOLD
+	nameLabel.Gravity = Gravity.CENTER_VERTICAL
+	topPanel.AddView(nameLabel, 24dip, 178dip, 100%x - 48dip, 30dip)
+	
+	'Main content card
+	Dim card As Panel
+	card.Initialize("")
+	SetPanelBackground(card, cardCream, 26dip)
+	Activity.AddView(card, 20dip, 275dip, 100%x - 40dip, 335dip)
+	
+	Dim cardTitle As Label
+	cardTitle.Initialize("")
+	cardTitle.Text = "Choose a Conversion"
+	cardTitle.TextSize = 22
+	cardTitle.TextColor = darkText
+	cardTitle.Typeface = Typeface.DEFAULT_BOLD
+	card.AddView(cardTitle, 22dip, 24dip, 100%x - 84dip, 34dip)
+	
+	Dim cardSub As Label
+	cardSub.Initialize("")
+	cardSub.Text = "Open the menu and pick the unit you need."
+	cardSub.TextSize = 14
+	cardSub.TextColor = mutedText
+	cardSub.Gravity = Gravity.CENTER_VERTICAL
+	card.AddView(cardSub, 22dip, 58dip, 100%x - 84dip, 30dip)
+	
+	AddCozyConversionRow(card, "Inches", "Centimeter", "2.54 cm per inch", 108dip)
+	AddCozyConversionRow(card, "Meter", "Centimeter", "100 cm per meter", 158dip)
+	AddCozyConversionRow(card, "Inches", "Feet", "12 inches per foot", 208dip)
+	AddCozyConversionRow(card, "Feet", "Inches", "Quick length conversion", 258dip)
+	
+	'Bottom note
+	Dim note As Label
+	note.Initialize("")
+	note.Text = "Use the ☰ button to start converting."
+	note.TextSize = 14
+	note.TextColor = mutedText
+	note.Gravity = Gravity.CENTER
+	Activity.AddView(note, 20dip, 625dip, 100%x - 40dip, 35dip)
+	
+	btnMenu.BringToFront
+End Sub
+
+Sub AddCozyConversionRow(parent As Panel, fromUnit As String, toUnit As String, miniText As String, Top As Int)
+	Dim row As Panel
+	row.Initialize("")
+	SetPanelBackground(row, Colors.RGB(253, 239, 238), 18dip)
+	parent.AddView(row, 22dip, Top, 100%x - 84dip, 42dip)
+	
+	Dim dot As Panel
+	dot.Initialize("")
+	SetPanelBackground(dot, primaryMaroon, 20dip)
+	row.AddView(dot, 14dip, 14dip, 14dip, 14dip)
+	
+	Dim lbl As Label
+	lbl.Initialize("")
+	lbl.Text = fromUnit & "  →  " & toUnit
+	lbl.TextSize = 15
+	lbl.TextColor = darkText
+	lbl.Typeface = Typeface.DEFAULT_BOLD
+	lbl.Gravity = Gravity.CENTER_VERTICAL
+	row.AddView(lbl, 38dip, 3dip, 100%x - 150dip, 20dip)
+	
+	Dim subLbl As Label
+	subLbl.Initialize("")
+	subLbl.Text = miniText
+	subLbl.TextSize = 12
+	subLbl.TextColor = mutedText
+	subLbl.Gravity = Gravity.CENTER_VERTICAL
+	row.AddView(subLbl, 38dip, 21dip, 100%x - 150dip, 18dip)
+End Sub
+
+'========================
+' SIDE MENU
+'========================
+
+Sub CreateSideMenu
+	overlayPanel.Initialize("overlayPanel")
+	overlayPanel.Color = Colors.ARGB(115, 35, 10, 15)
+	Activity.AddView(overlayPanel, 0, 0, 100%x, 100%y)
+	overlayPanel.Visible = False
+	
+	sidePanel.Initialize("sidePanel")
+	SetPanelBackground(sidePanel, darkMaroon, 0)
+	Activity.AddView(sidePanel, -menuWidth, 0, menuWidth, 100%y)
+	
+	Dim headerPanel As Panel
+	headerPanel.Initialize("")
+	SetPanelBackground(headerPanel, primaryMaroon, 0)
+	sidePanel.AddView(headerPanel, 0, 0, menuWidth, 130dip)
+	
+	Dim menuTitle As Label
+	menuTitle.Initialize("")
+	menuTitle.Text = "Conversion Menu"
+	menuTitle.TextColor = Colors.White
+	menuTitle.TextSize = 22
+	menuTitle.Typeface = Typeface.DEFAULT_BOLD
+	menuTitle.Gravity = Gravity.CENTER_VERTICAL
+	headerPanel.AddView(menuTitle, 20dip, 36dip, menuWidth - 40dip, 34dip)
+	
+	Dim menuSubTitle As Label
+	menuSubTitle.Initialize("")
+	menuSubTitle.Text = "Select where you want to go"
+	menuSubTitle.TextColor = Colors.RGB(245, 218, 221)
+	menuSubTitle.TextSize = 14
+	menuSubTitle.Gravity = Gravity.CENTER_VERTICAL
+	headerPanel.AddView(menuSubTitle, 20dip, 72dip, menuWidth - 40dip, 25dip)
+	
+	AddMenuButton("Inches to Centimeter", "in_to_cm", 165dip)
+	AddMenuButton("Meter to Centimeter", "m_to_cm", 225dip)
+	AddMenuButton("Inches to Feet", "in_to_ft", 285dip)
+	AddMenuButton("Feet to Inches", "ft_to_in", 345dip)
+	AddMenuButton("Centimeter to Meter", "cm_to_m", 405dip)
+End Sub
+
+Sub AddMenuButton(Text As String, TagValue As String, Top As Int)
+	Dim btn As Button
+	btn.Initialize("menuButton")
+	btn.Text = Text
+	btn.Tag = TagValue
+	btn.TextSize = 15
+	btn.TextColor = Colors.White
+	btn.Gravity = Gravity.CENTER_VERTICAL
+	btn.Padding = Array As Int(18dip, 0, 0, 0)
+	SetButtonNormal(btn)
+	sidePanel.AddView(btn, 16dip, Top, menuWidth - 32dip, 48dip)
+End Sub
+
+Sub SetButtonNormal(btn As Button)
+	Dim cd As ColorDrawable
+	cd.Initialize(Colors.RGB(126, 34, 54), 16dip)
+	btn.Background = cd
+End Sub
+
+Sub SetButtonPressed(btn As Button)
+	Dim cd As ColorDrawable
+	cd.Initialize(Colors.RGB(166, 58, 80), 16dip)
+	btn.Background = cd
+End Sub
+
+Sub btnMenu_Click
+	If isMenuOpen = False Then
+		OpenMenu
+	Else
+		CloseMenu
+	End If
+End Sub
+
+Sub btnMenu_Touch (Action As Int, X As Float, Y As Float) As Boolean
+	If Action = 0 Then
+		StyleMenuButtonPressed
+	Else If Action = 1 Or Action = 3 Then
+		StyleMenuButtonNormal
+	End If
+	
+	Return False
+End Sub
+
+Sub StyleMenuButtonNormal
+	btnMenu.Text = "☰"
+	btnMenu.TextSize = 25
+	btnMenu.TextColor = Colors.White
+	btnMenu.Typeface = Typeface.DEFAULT_BOLD
+	btnMenu.Gravity = Gravity.CENTER
+	btnMenu.SetLayoutAnimated(0, 18dip, 32dip, 52dip, 52dip)
+	
+	Dim menuBg As ColorDrawable
+	menuBg.Initialize(softMaroon, 18dip)
+	btnMenu.Background = menuBg
+End Sub
+
+Sub StyleMenuButtonPressed
+	btnMenu.SetLayoutAnimated(80, 20dip, 34dip, 48dip, 48dip)
+	
+	Dim menuBg As ColorDrawable
+	menuBg.Initialize(primaryMaroon, 16dip)
+	btnMenu.Background = menuBg
+End Sub
+
+Sub OpenMenu
+	overlayPanel.Visible = True
+	overlayPanel.BringToFront
+	sidePanel.BringToFront
+	
+	'Small bounce-like drawer entrance
+	sidePanel.SetLayoutAnimated(180, 10dip, 0, menuWidth, 100%y)
+	Sleep(180)
+	sidePanel.SetLayoutAnimated(110, 0, 0, menuWidth, 100%y)
+	
+	isMenuOpen = True
+End Sub
+
+Sub CloseMenu
+	If sidePanel.IsInitialized Then
+		sidePanel.SetLayoutAnimated(180, -menuWidth - 15dip, 0, menuWidth, 100%y)
+	End If
+	
+	isMenuOpen = False
+	Sleep(180)
+	
+	If overlayPanel.IsInitialized Then
+		overlayPanel.Visible = False
+	End If
+	
+	StyleMenuButtonNormal
+End Sub
+
+Sub overlayPanel_Click
+	If isMenuOpen Then CloseMenu
+End Sub
+
+Sub menuButton_Touch (Action As Int, X As Float, Y As Float) As Boolean
+	Dim btn As Button = Sender
+	
+	If Action = 0 Then
+		SetButtonPressed(btn)
+		btn.SetLayoutAnimated(70, btn.Left + 3dip, btn.Top + 2dip, btn.Width - 6dip, btn.Height - 4dip)
+	Else If Action = 1 Or Action = 3 Then
+		SetButtonNormal(btn)
+		btn.SetLayoutAnimated(70, 16dip, btn.Top - 2dip, menuWidth - 32dip, 48dip)
+	End If
+	
+	Return False
+End Sub
+
+Sub menuButton_Click
+	Dim btn As Button = Sender
+	
+	If isMenuOpen Then
+		CloseMenu
+		Sleep(80)
+	End If
+	
+	Select btn.Tag
+		Case "in_to_cm"
+			LoadConversionPage("Inches to Centimeter", "in_to_cm", "Inches", "Centimeter")
+			
+		Case "m_to_cm"
+			LoadConversionPage("Meter to Centimeter", "m_to_cm", "Meter", "Centimeter")
+			
+		Case "in_to_ft"
+			LoadConversionPage("Inches to Feet", "in_to_ft", "Inches", "Feet")
+			
+		Case "ft_to_in"
+			LoadConversionPage("Feet to Inches", "ft_to_in", "Feet", "Inches")
+			
+		Case "cm_to_m"
+			LoadConversionPage("Centimeter to Meter", "cm_to_m", "Centimeter", "Meter")
+	End Select
+End Sub
+
+'========================
+' CONVERSION PAGE
+'========================
+
+Sub LoadConversionPage(PageTitle As String, ConversionType As String, Unit1 As String, Unit2 As String)
+	currentPage = "converter"
+	currentConversion = ConversionType
+	isMenuOpen = False
+	
+	Activity.RemoveAllViews
+	Activity.Color = warmCream
+	
+	pageRoot.Initialize("pageRoot")
+	pageRoot.Color = warmCream
+	Activity.AddView(pageRoot, 100%x, 0, 100%x, 100%y)
+	
+	Dim topPanel As Panel
+	topPanel.Initialize("")
+	SetPanelBackground(topPanel, darkMaroon, 0)
+	pageRoot.AddView(topPanel, 0, 0, 100%x, 118dip)
+	
+	Dim softCircle As Panel
+	softCircle.Initialize("")
+	SetPanelBackground(softCircle, Colors.ARGB(38, 255, 255, 255), 70dip)
+	topPanel.AddView(softCircle, 100%x - 70dip, -35dip, 110dip, 110dip)
+	
+	btnBack.Initialize("btnBack")
+	btnBack.Text = "‹"
+	btnBack.TextSize = 44
+	btnBack.TextColor = Colors.White
+	btnBack.Gravity = Gravity.CENTER
+	btnBack.Typeface = Typeface.DEFAULT_BOLD
+	topPanel.AddView(btnBack, 12dip, 42dip, 54dip, 48dip)
+	
+	lblTitle.Initialize("")
+	lblTitle.Text = PageTitle
+	lblTitle.TextSize = 20
+	lblTitle.TextColor = Colors.White
+	lblTitle.Typeface = Typeface.DEFAULT_BOLD
+	lblTitle.Gravity = Gravity.CENTER_VERTICAL
+	topPanel.AddView(lblTitle, 70dip, 43dip, 100%x - 92dip, 34dip)
+	
+	Dim subtitle As Label
+	subtitle.Initialize("")
+	subtitle.Text = "Enter one value, then convert."
+	subtitle.TextSize = 13
+	subtitle.TextColor = Colors.RGB(239, 211, 214)
+	subtitle.Gravity = Gravity.CENTER_VERTICAL
+	topPanel.AddView(subtitle, 70dip, 72dip, 100%x - 92dip, 24dip)
+	
+	Dim card As Panel
+	card.Initialize("")
+	SetPanelBackground(card, cardCream, 28dip)
+	pageRoot.AddView(card, 20dip, 150dip, 100%x - 40dip, 390dip)
+	
+	Dim lblInput As Label
+	lblInput.Initialize("")
+	lblInput.Text = Unit1 & " Value"
+	lblInput.TextSize = 15
+	lblInput.TextColor = darkText
+	lblInput.Typeface = Typeface.DEFAULT_BOLD
+	card.AddView(lblInput, 24dip, 32dip, 100%x - 88dip, 25dip)
+	
+	Dim inputBox As Panel
+	inputBox.Initialize("")
+	SetPanelBackground(inputBox, Colors.RGB(255, 241, 239), 18dip)
+	card.AddView(inputBox, 24dip, 65dip, 100%x - 88dip, 58dip)
+	
+	value1.Initialize("value1")
+	value1.Hint = "Enter value"
+	value1.TextSize = 18
+	value1.SingleLine = True
+	value1.ForceDoneButton = True
+	value1.InputType = value1.INPUT_TYPE_DECIMAL_NUMBERS
+	value1.TextColor = darkText
+	value1.HintColor = Colors.RGB(160, 130, 130)
+	value1.Padding = Array As Int(15dip, 0, 15dip, 0)
+	value1.Background = Null
+	inputBox.AddView(value1, 0, 0, inputBox.Width - 70dip, 58dip)
+	
+	Dim unitLabel1 As Label
+	unitLabel1.Initialize("")
+	unitLabel1.Text = GetUnitAbbr(Unit1)
+	unitLabel1.TextSize = 15
+	unitLabel1.TextColor = primaryMaroon
+	unitLabel1.Typeface = Typeface.DEFAULT_BOLD
+	unitLabel1.Gravity = Gravity.CENTER
+	inputBox.AddView(unitLabel1, inputBox.Width - 70dip, 0, 65dip, 58dip)
+	
+	Dim arrowLabel As Label
+	arrowLabel.Initialize("")
+	arrowLabel.Text = "↓"
+	arrowLabel.TextSize = 24
+	arrowLabel.TextColor = primaryMaroon
+	arrowLabel.Gravity = Gravity.CENTER
+	card.AddView(arrowLabel, 0, 132dip, 100%x - 40dip, 30dip)
+	
+	Dim lblOutput As Label
+	lblOutput.Initialize("")
+	lblOutput.Text = Unit2 & " Value"
+	lblOutput.TextSize = 15
+	lblOutput.TextColor = darkText
+	lblOutput.Typeface = Typeface.DEFAULT_BOLD
+	card.AddView(lblOutput, 24dip, 166dip, 100%x - 88dip, 25dip)
+	
+	Dim outputBox As Panel
+	outputBox.Initialize("")
+	SetPanelBackground(outputBox, softPink, 18dip)
+	card.AddView(outputBox, 24dip, 199dip, 100%x - 88dip, 58dip)
+	
+	value2.Initialize("value2")
+	value2.Hint = "Converted value"
+	value2.TextSize = 18
+	value2.SingleLine = True
+	value2.Enabled = False
+	value2.TextColor = darkText
+	value2.HintColor = Colors.RGB(160, 130, 130)
+	value2.Padding = Array As Int(15dip, 0, 15dip, 0)
+	value2.Background = Null
+	outputBox.AddView(value2, 0, 0, outputBox.Width - 70dip, 58dip)
+	
+	Dim unitLabel2 As Label
+	unitLabel2.Initialize("")
+	unitLabel2.Text = GetUnitAbbr(Unit2)
+	unitLabel2.TextSize = 15
+	unitLabel2.TextColor = primaryMaroon
+	unitLabel2.Typeface = Typeface.DEFAULT_BOLD
+	unitLabel2.Gravity = Gravity.CENTER
+	outputBox.AddView(unitLabel2, outputBox.Width - 70dip, 0, 65dip, 58dip)
+	
+	btnResult.Initialize("btnResult")
+	btnResult.Text = "Convert"
+	btnResult.TextSize = 17
+	btnResult.TextColor = Colors.White
+	btnResult.Typeface = Typeface.DEFAULT_BOLD
+	SetResultButtonNormal
+	card.AddView(btnResult, 24dip, 295dip, 100%x - 88dip, 54dip)
+	
+	Dim keyboardNote As Label
+	keyboardNote.Initialize("")
+	keyboardNote.Text = "Press Convert or tap Enter on your keyboard."
+	keyboardNote.TextSize = 12
+	keyboardNote.TextColor = mutedText
+	keyboardNote.Gravity = Gravity.CENTER
+	card.AddView(keyboardNote, 24dip, 354dip, 100%x - 88dip, 25dip)
+	
+	Dim footerText As Label
+	footerText.Initialize("")
+	footerText.Text = "AG D. Evangelista"
+	footerText.TextSize = 13
+	footerText.TextColor = mutedText
+	footerText.Gravity = Gravity.CENTER
+	pageRoot.AddView(footerText, 25dip, 555dip, 100%x - 50dip, 28dip)
+	
+	'Page slide with soft settle
+	pageRoot.SetLayoutAnimated(240, -6dip, 0, 100%x, 100%y)
+	Sleep(240)
+	pageRoot.SetLayoutAnimated(100, 0, 0, 100%x, 100%y)
+End Sub
+
+'========================
+' CONVERSION LOGIC
+'========================
+
+Sub btnResult_Click
+	ConvertValue
+End Sub
+
+Sub value1_EnterPressed
+	ConvertValue
+End Sub
+
+Sub ConvertValue
+	If value1.Text.Trim = "" Then
+		ToastMessageShow("Please enter a value", False)
+		Return
+	End If
+	
+	Dim inputValue As Double = value1.Text
+	Dim result As Double
+	
+	Select currentConversion
+		Case "in_to_cm"
+			result = inputValue * 2.54
+			
+		Case "m_to_cm"
+			result = inputValue * 100
+			
+		Case "in_to_ft"
+			result = inputValue / 12
+			
+		Case "ft_to_in"
+			result = inputValue * 12
+			
+		Case "cm_to_m"
+			result = inputValue / 100
+	End Select
+	
+	value2.Text = NumberFormat(result, 1, 4)
+	
+	'Small output feedback animation
+	value2.SetLayoutAnimated(80, value2.Left + 3dip, value2.Top, value2.Width - 6dip, value2.Height)
+	Sleep(80)
+	value2.SetLayoutAnimated(80, value2.Left - 3dip, value2.Top, value2.Width + 6dip, value2.Height)
+End Sub
+
+Sub btnResult_Touch (Action As Int, X As Float, Y As Float) As Boolean
+	If Action = 0 Then
+		SetResultButtonPressed
+		btnResult.SetLayoutAnimated(70, 28dip, 299dip, 100%x - 96dip, 48dip)
+	Else If Action = 1 Or Action = 3 Then
+		SetResultButtonNormal
+		btnResult.SetLayoutAnimated(70, 24dip, 295dip, 100%x - 88dip, 54dip)
+	End If
+	
+	Return False
+End Sub
+
+Sub SetResultButtonNormal
+	Dim cd As ColorDrawable
+	cd.Initialize(primaryMaroon, 18dip)
+	btnResult.Background = cd
+End Sub
+
+Sub SetResultButtonPressed
+	Dim cd As ColorDrawable
+	cd.Initialize(softMaroon, 16dip)
+	btnResult.Background = cd
+End Sub
+
+Sub GetUnitAbbr(UnitName As String) As String
+	Select UnitName
+		Case "Inches"
+			Return "in"
+		Case "Centimeter"
+			Return "cm"
+		Case "Meter"
+			Return "m"
+		Case "Feet"
+			Return "ft"
+	End Select
+	
+	Return UnitName
+End Sub
+
+'========================
+' BACK BUTTON
+'========================
+
+Sub btnBack_Click
+	GoBackToMain
+End Sub
+
+Sub btnBack_Touch (Action As Int, X As Float, Y As Float) As Boolean
+	If Action = 0 Then
+		btnBack.TextColor = Colors.RGB(245, 210, 215)
+		btnBack.SetLayoutAnimated(70, 15dip, 44dip, 48dip, 44dip)
+	Else If Action = 1 Or Action = 3 Then
+		btnBack.TextColor = Colors.White
+		btnBack.SetLayoutAnimated(70, 12dip, 42dip, 54dip, 48dip)
+	End If
+	
+	Return False
+End Sub
+
+Sub GoBackToMain
+	If pageRoot.IsInitialized Then
+		pageRoot.SetLayoutAnimated(220, 100%x + 20dip, 0, 100%x, 100%y)
+		Sleep(220)
+	End If
+	
+	LoadMainPage
+End Sub
+
+'========================
+' PHONE BACK BUTTON HANDLING
+'========================
+
+Sub Activity_KeyPress (KeyCode As Int) As Boolean
+	If KeyCode = KeyCodes.KEYCODE_BACK Then
+		
+		If isMenuOpen Then
+			CloseMenu
+			Return True
+		End If
+		
+		If currentPage = "converter" Then
+			GoBackToMain
+			Return True
+		End If
+		
+	End If
+	
+	Return False
+End Sub
+
+'========================
+' UI HELPER
+'========================
+
+Sub SetPanelBackground(pnl As Panel, clr As Int, radius As Int)
+	Dim cd As ColorDrawable
+	cd.Initialize(clr, radius)
+	pnl.Background = cd
+End Sub

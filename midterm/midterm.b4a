@@ -1,0 +1,135 @@
+﻿Build1=Default,b4a.example
+File1=HOME.bal
+File2=Layout.bal
+File3=main.bal
+File4=PAGE1.bal
+File5=PAGE2.bal
+FileGroup1=Default Group
+FileGroup2=Default Group
+FileGroup3=Default Group
+FileGroup4=Default Group
+FileGroup5=Default Group
+Group=Default Group
+Library1=core
+Library2=xui
+Library3=b4xdrawer
+ManifestCode='This code will be applied to the manifest file during compilation.~\n~'You do not need to modify it in most cases.~\n~'See this link for for more information: https://www.b4x.com/forum/showthread.php?p=78136~\n~AddManifestText(~\n~<uses-sdk android:minSdkVersion="21" android:targetSdkVersion="35"/>~\n~<supports-screens android:largeScreens="true" ~\n~    android:normalScreens="true" ~\n~    android:smallScreens="true" ~\n~    android:anyDensity="true"/>)~\n~SetApplicationAttribute(android:icon, "@drawable/icon")~\n~SetApplicationAttribute(android:label, "$LABEL$")~\n~CreateResourceFromFile(Macro, Themes.LightTheme)~\n~'End of default text.~\n~
+Module1=Starter
+NumberOfFiles=5
+NumberOfLibraries=3
+NumberOfModules=1
+Version=13.4
+@EndOfDesignText@
+#Region  Project Attributes 
+	#ApplicationLabel: B4A Example
+	#VersionCode: 1
+	#VersionName: 
+	'SupportedOrientations possible values: unspecified, landscape or portrait.
+	#SupportedOrientations: unspecified
+	#CanInstallToExternalStorage: False
+#End Region
+
+#Region  Activity Attributes 
+	#FullScreen: False
+	#IncludeTitle: True
+#End Region
+
+Sub Process_Globals
+	'These global variables will be declared once when the application starts.
+	'These variables can be accessed from all modules.
+	Private xui As XUI
+End Sub
+
+Sub Globals
+	'These global variables will be redeclared each time the activity is created.
+	Private Drawer As B4XDrawer
+	Private pnlMenu As Panel
+	Private lblTitle As Label
+	Private pnlMain As Panel
+	Private btnHome, btnPage1, btnPage2 As Button
+End Sub
+
+Sub Activity_Create(FirstTime As Boolean)
+	Activity.LoadLayout("Main")
+	
+	Drawer.Initialize(Me, "Drawer", Activity, 260dip)
+	Drawer.CenterPanel.BringToFront
+	Drawer.LeftPanel.BringToFront
+	
+	pnlMenu = Drawer.LeftPanel
+	pnlMenu.Color =  Colors.RGB(233, 150, 243)
+	CreateMenu
+	ShowHome
+End Sub
+
+Sub CreateMenu
+	Dim btnHome, btnPage1, btnPage2 As Button
+	btnHome.Initialize("btnHome")
+	btnHome.Text = "Home"
+	btnPage1.Initialize("btnpage1")
+	btnPage1.Text = "Page 1"
+	btnPage2.Initialize("btnPage2")
+	btnPage2.Text = "Page 2"
+	For Each b As Button In Array(btnHome, btnPage1, btnPage2)
+		b.TextSize = 15
+		b.Gravity = Gravity.LEFT + Gravity.CENTER_VERTICAL
+		b.Color = Colors.Transparent
+		b.TextColor = Colors.White
+		pnlMenu.AddView(b, 10dip, 0, 240dip, 50dip)
+	Next
+	btnHome.Top = 120dip
+	btnPage1.Top = 180dip
+	btnPage2.Top = 240dip
+End Sub
+
+Sub btnHome_click
+	Drawer.LeftOpen = False
+	ShowHome
+End Sub
+
+Sub btnPage1_Click
+	Drawer.LeftOpen = False
+	ShowPage1
+End Sub
+
+Sub btnPage2_Click
+	Drawer.LeftOpen = False
+	ShowPage2
+End Sub
+
+Sub ShowHome
+	pnlMain.RemoveAllViews
+	pnlMain.LoadLayout("home")
+	lblTitle.Text = "Home"
+End Sub
+
+Sub ShowPage1
+	pnlMain.RemoveAllViews
+	pnlMain.LoadLayout("page1")
+	lblTitle.Text = "Page 1"
+End Sub
+
+Sub ShowPage2
+	pnlMain.RemoveAllViews
+	pnlMain.LoadLayout("page2")
+	lblTitle.Text = "Page 2"
+End Sub
+
+Sub Activity_KeyPress (KeyCode As Int) As Boolean
+	If KeyCode = KeyCodes.KEYCODE_BACK And Drawer.LeftOpen Then
+		Drawer.LeftOpen = False
+		Return True
+	End If
+	Return False
+End Sub
+Sub Activity_Resume
+
+End Sub
+
+Sub Activity_Pause (UserClosed As Boolean)
+
+End Sub
+
+Sub Button1_Click
+	xui.MsgboxAsync("Hello world!", "B4X")
+End Sub
