@@ -1,0 +1,600 @@
+﻿Build1=Default,com.school.recipemanager
+File1=layout.bal
+FileGroup1=Default Group
+Group=Default Group
+Library1=core
+Library2=xui
+Library3=sql
+ManifestCode='This code will be applied to the manifest file during compilation.~\n~'You do not need to modify it in most cases.~\n~AddManifestText(~\n~<uses-sdk android:minSdkVersion="21" android:targetSdkVersion="35"/>~\n~<supports-screens android:largeScreens="true" ~\n~    android:normalScreens="true" ~\n~    android:smallScreens="true" ~\n~    android:anyDensity="true"/>)~\n~SetApplicationAttribute(android:icon, "@drawable/icon")~\n~SetApplicationAttribute(android:label, "$LABEL$")~\n~CreateResourceFromFile(Macro, Themes.LightTheme)~\n~'End of default text.~\n~
+Module1=Starter
+NumberOfFiles=1
+NumberOfLibraries=3
+NumberOfModules=1
+Version=13.4
+@EndOfDesignText@
+#Region  Project Attributes 
+	#ApplicationLabel: Recipe Manager
+	#VersionCode: 1
+	#VersionName: 1.0
+	#SupportedOrientations: portrait
+	#CanInstallToExternalStorage: False
+#End Region
+
+#Region  Activity Attributes 
+	#FullScreen: False
+	#IncludeTitle: False
+#End Region
+
+Sub Process_Globals
+	Private SQL1 As SQL
+	Private xui As XUI
+	Private SelectedRecipeId As Int = -1
+End Sub
+
+Sub Globals
+	Private sv As ScrollView
+	Private pnlList As Panel
+
+	Private lblHeader As Label
+	Private lblName As Label
+	Private lblCategory As Label
+	Private lblIngredients As Label
+	Private lblInstructions As Label
+	Private lblList As Label
+
+	Private txtName As EditText
+	Private txtIngredients As EditText
+	Private txtInstructions As EditText
+	Private txtSearch As EditText
+
+	Private spnCategory As Spinner
+	Private spnFilter As Spinner
+	Private chkFavorite As CheckBox
+
+	Private btnSave As Button
+	Private btnDelete As Button
+	Private btnClear As Button
+
+	Private lvRecipes As ListView
+End Sub
+
+Sub Activity_Create(FirstTime As Boolean)
+	Activity.Color = Colors.RGB(247, 246, 242)
+
+	If FirstTime Then
+		SetupDatabase
+	End If
+
+	BuildLayout
+	LoadRecipes
+	ClearForm
+End Sub
+
+Sub Activity_Resume
+	LoadRecipes
+End Sub
+
+Sub Activity_Pause (UserClosed As Boolean)
+
+End Sub
+
+Private Sub SetupDatabase
+	If SQL1.IsInitialized = False Then
+		SQL1.Initialize(File.DirInternal, "recipes.db", True)
+	End If
+
+	SQL1.ExecNonQuery("CREATE TABLE IF NOT EXISTS recipes (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, ingredients TEXT, instructions TEXT, category TEXT DEFAULT 'Other', is_favorite INTEGER DEFAULT 0)")
+
+	EnsureColumn("recipes", "category", "category TEXT DEFAULT 'Other'")
+	EnsureColumn("recipes", "is_favorite", "is_favorite INTEGER DEFAULT 0")
+
+	NormalizeOldRows
+	SeedRecipesIfEmpty
+End Sub
+
+Private Sub EnsureColumn(TableName As String, ColumnName As String, ColumnDefinition As String)
+	Dim found As Boolean = False
+	Dim rs As Cursor = SQL1.ExecQuery("PRAGMA table_info(" & TableName & ")")
+
+	For i = 0 To rs.RowCount - 1
+		rs.Position = i
+
+		If rs.GetString("name").ToLowerCase = ColumnName.ToLowerCase Then
+			found = True
+			Exit
+		End If
+	Next
+
+	rs.Close
+
+	If found = False Then
+		SQL1.ExecNonQuery("ALTER TABLE " & TableName & " ADD COLUMN " & ColumnDefinition)
+	End If
+End Sub
+
+Private Sub NormalizeOldRows
+	SQL1.ExecNonQuery("UPDATE recipes SET category = 'Other' WHERE category IS NULL OR category = ''")
+	SQL1.ExecNonQuery("UPDATE recipes SET is_favorite = 0 WHERE is_favorite IS NULL")
+End Sub
+
+Private Sub SeedRecipesIfEmpty
+	Dim rs As Cursor = SQL1.ExecQuery("SELECT COUNT(*) AS total FROM recipes")
+	rs.Position = 0
+
+	If rs.GetInt("total") = 0 Then
+		SQL1.ExecNonQuery2("INSERT INTO recipes (name, ingredients, instructions, category, is_favorite) VALUES (?, ?, ?, ?, ?)", _
+			Array As Object("Chicken Adobo", "Chicken, soy sauce, vinegar, garlic, bay leaf, pepper", "Marinate chicken. Simmer with soy sauce, vinegar, garlic, bay leaf, and pepper until tender.", "Dinner", 1))
+
+		SQL1.ExecNonQuery2("INSERT INTO recipes (name, ingredients, instructions, category, is_favorite) VALUES (?, ?, ?, ?, ?)", _
+			Array As Object("Garlic Fried Rice", "Cooked rice, garlic, oil, salt", "Toast garlic in oil. Add rice and salt. Stir fry until hot.", "Breakfast", 0))
+
+		SQL1.ExecNonQuery2("INSERT INTO recipes (name, ingredients, instructions, category, is_favorite) VALUES (?, ?, ?, ?, ?)", _
+			Array As Object("Mango Float", "Graham crackers, cream, condensed milk, mangoes", "Layer crackers, sweet cream, and mango slices. Chill before serving.", "Dessert", 1))
+	End If
+
+	rs.Close
+End Sub
+
+Private Sub BuildLayout
+	Activity.RemoveAllViews
+	Activity.Color = Colors.RGB(247, 246, 242)
+
+	Dim margin As Int = 16dip
+	Dim pageW As Int = 100%x
+	Dim cardW As Int = pageW - (margin * 2)
+	Dim inner As Int = 16dip
+	Dim inputW As Int = cardW - (inner * 2)
+
+	Dim darkText As Int = Colors.RGB(25, 25, 25)
+	Dim mutedText As Int = Colors.RGB(95, 95, 95)
+	Dim accent As Int = Colors.RGB(39, 103, 80)
+	Dim softInput As Int = Colors.RGB(250, 250, 248)
+	Dim lineColor As Int = Colors.RGB(232, 232, 228)
+
+	sv.Initialize(1200dip)
+	Activity.AddView(sv, 0, 0, 100%x, 100%y)
+	sv.Panel.Color = Colors.RGB(247, 246, 242)
+
+	Dim topBar As Panel
+	topBar.Initialize("")
+	topBar.Color = accent
+	sv.Panel.AddView(topBar, 0, 0, 100%x, 5dip)
+
+	lblHeader.Initialize("")
+	lblHeader.Text = "Recipe Manager"
+	lblHeader.TextSize = 23
+	lblHeader.TextColor = darkText
+	lblHeader.Typeface = Typeface.DEFAULT_BOLD
+	lblHeader.Gravity = Gravity.LEFT
+	sv.Panel.AddView(lblHeader, margin, 28dip, cardW, 32dip)
+
+	Dim lblSubtitle As Label
+	lblSubtitle.Initialize("")
+	lblSubtitle.Text = "Save your favorite meals in one place"
+	lblSubtitle.TextSize = 13
+	lblSubtitle.TextColor = mutedText
+	lblSubtitle.Gravity = Gravity.LEFT
+	sv.Panel.AddView(lblSubtitle, margin, 62dip, cardW, 24dip)
+
+	Dim pnlCard As Panel
+	pnlCard.Initialize("")
+	pnlCard.Background = RoundedBg(Colors.White, 18dip)
+	sv.Panel.AddView(pnlCard, margin, 106dip, cardW, 500dip)
+
+	Dim y As Int = 18dip
+
+	lblName.Initialize("")
+	lblName.Text = "Recipe name"
+	lblName.TextSize = 13
+	lblName.TextColor = mutedText
+	pnlCard.AddView(lblName, inner, y, inputW, 20dip)
+
+	y = y + 24dip
+
+	txtName.Initialize("txtName")
+	txtName.Hint = "Chicken Adobo"
+	txtName.SingleLine = True
+	txtName.TextSize = 15
+	txtName.TextColor = darkText
+	txtName.Color = softInput
+	txtName.Background = RoundedBg(softInput, 10dip)
+	pnlCard.AddView(txtName, inner, y, inputW, 42dip)
+
+	y = y + 56dip
+
+	lblCategory.Initialize("")
+	lblCategory.Text = "Category"
+	lblCategory.TextSize = 13
+	lblCategory.TextColor = mutedText
+	pnlCard.AddView(lblCategory, inner, y, inputW, 20dip)
+
+	y = y + 24dip
+
+	spnCategory.Initialize("spnCategory")
+	spnCategory.Color = softInput
+	AddCategoryItems(spnCategory, False)
+	pnlCard.AddView(spnCategory, inner, y, inputW, 42dip)
+
+	y = y + 56dip
+
+	lblIngredients.Initialize("")
+	lblIngredients.Text = "Ingredients"
+	lblIngredients.TextSize = 13
+	lblIngredients.TextColor = mutedText
+	pnlCard.AddView(lblIngredients, inner, y, inputW, 20dip)
+
+	y = y + 24dip
+
+	txtIngredients.Initialize("txtIngredients")
+	txtIngredients.Hint = "List the ingredients"
+	txtIngredients.SingleLine = False
+	txtIngredients.Gravity = Gravity.TOP
+	txtIngredients.TextSize = 15
+	txtIngredients.TextColor = darkText
+	txtIngredients.Color = softInput
+	txtIngredients.Background = RoundedBg(softInput, 10dip)
+	pnlCard.AddView(txtIngredients, inner, y, inputW, 66dip)
+
+	y = y + 80dip
+
+	lblInstructions.Initialize("")
+	lblInstructions.Text = "Instructions"
+	lblInstructions.TextSize = 13
+	lblInstructions.TextColor = mutedText
+	pnlCard.AddView(lblInstructions, inner, y, inputW, 20dip)
+
+	y = y + 24dip
+
+	txtInstructions.Initialize("txtInstructions")
+	txtInstructions.Hint = "Write the cooking steps"
+	txtInstructions.SingleLine = False
+	txtInstructions.Gravity = Gravity.TOP
+	txtInstructions.TextSize = 15
+	txtInstructions.TextColor = darkText
+	txtInstructions.Color = softInput
+	txtInstructions.Background = RoundedBg(softInput, 10dip)
+	pnlCard.AddView(txtInstructions, inner, y, inputW, 78dip)
+
+	y = y + 92dip
+
+	chkFavorite.Initialize("chkFavorite")
+	chkFavorite.Text = "Mark as favorite"
+	chkFavorite.TextSize = 14
+	chkFavorite.TextColor = darkText
+	chkFavorite.Checked = False
+	pnlCard.AddView(chkFavorite, inner, y, inputW, 36dip)
+
+	y = y + 48dip
+
+	Dim btnGap As Int = 10dip
+	Dim btnW As Int = (inputW - (btnGap * 2)) / 3
+
+	btnSave.Initialize("btnSave")
+	btnSave.Text = "Save"
+	btnSave.TextSize = 14
+	btnSave.TextColor = Colors.White
+	btnSave.Background = RoundedBg(accent, 12dip)
+	pnlCard.AddView(btnSave, inner, y, btnW, 46dip)
+
+	btnDelete.Initialize("btnDelete")
+	btnDelete.Text = "Delete"
+	btnDelete.TextSize = 14
+	btnDelete.TextColor = Colors.RGB(130, 50, 50)
+	btnDelete.Background = RoundedBg(Colors.RGB(248, 235, 235), 12dip)
+	pnlCard.AddView(btnDelete, inner + btnW + btnGap, y, btnW, 46dip)
+
+	btnClear.Initialize("btnClear")
+	btnClear.Text = "Clear"
+	btnClear.TextSize = 14
+	btnClear.TextColor = Colors.RGB(55, 55, 55)
+	btnClear.Background = RoundedBg(Colors.RGB(238, 238, 234), 12dip)
+	pnlCard.AddView(btnClear, inner + ((btnW + btnGap) * 2), y, btnW, 46dip)
+
+	pnlList.Initialize("")
+	pnlList.Background = RoundedBg(Colors.White, 18dip)
+	sv.Panel.AddView(pnlList, margin, 626dip, cardW, 410dip)
+
+	lblList.Initialize("")
+	lblList.Text = "Saved Recipes"
+	lblList.TextSize = 20
+	lblList.TextColor = darkText
+	lblList.Typeface = Typeface.DEFAULT_BOLD
+	pnlList.AddView(lblList, inner, 18dip, inputW, 30dip)
+
+	Dim lblListSub As Label
+	lblListSub.Initialize("")
+	lblListSub.Text = "Search, filter, or tap a recipe to edit"
+	lblListSub.TextSize = 12
+	lblListSub.TextColor = mutedText
+	pnlList.AddView(lblListSub, inner, 50dip, inputW, 22dip)
+
+	txtSearch.Initialize("txtSearch")
+	txtSearch.Hint = "Search recipe"
+	txtSearch.SingleLine = True
+	txtSearch.TextSize = 15
+	txtSearch.TextColor = darkText
+	txtSearch.Color = softInput
+	txtSearch.Background = RoundedBg(softInput, 10dip)
+	pnlList.AddView(txtSearch, inner, 86dip, inputW, 42dip)
+
+	spnFilter.Initialize("spnFilter")
+	spnFilter.Color = softInput
+	AddCategoryItems(spnFilter, True)
+	pnlList.AddView(spnFilter, inner, 140dip, inputW, 42dip)
+
+	Dim divider As Panel
+	divider.Initialize("")
+	divider.Color = lineColor
+	pnlList.AddView(divider, inner, 196dip, inputW, 1dip)
+
+	lvRecipes.Initialize("lvRecipes")
+	lvRecipes.Color = Colors.White
+	lvRecipes.SingleLineLayout.ItemHeight = 52dip
+	lvRecipes.SingleLineLayout.Label.TextSize = 15
+	lvRecipes.SingleLineLayout.Label.TextColor = darkText
+	pnlList.AddView(lvRecipes, inner, 210dip, inputW, 180dip)
+
+	sv.Panel.Height = 1060dip
+End Sub
+
+Private Sub RoundedBg(BgColor As Int, Radius As Int) As ColorDrawable
+	Dim cd As ColorDrawable
+	cd.Initialize(BgColor, Radius)
+	Return cd
+End Sub
+
+Private Sub AddCategoryItems(spn As Spinner, IncludeAll As Boolean)
+	spn.Clear
+
+	If IncludeAll Then
+		spn.Add("All Categories")
+	End If
+
+	spn.Add("Breakfast")
+	spn.Add("Lunch")
+	spn.Add("Dinner")
+	spn.Add("Dessert")
+	spn.Add("Snack")
+	spn.Add("Other")
+End Sub
+
+Private Sub GetSelectedCategory As String
+	If spnCategory.IsInitialized = False Then Return "Other"
+	If spnCategory.SelectedIndex < 0 Then Return "Other"
+
+	Return spnCategory.GetItem(spnCategory.SelectedIndex)
+End Sub
+
+Private Sub SetCategorySpinner(CategoryName As String)
+	If spnCategory.IsInitialized = False Then Return
+
+	If CategoryName = "" Then
+		CategoryName = "Other"
+	End If
+
+	For i = 0 To spnCategory.Size - 1
+		If spnCategory.GetItem(i) = CategoryName Then
+			spnCategory.SelectedIndex = i
+			Return
+		End If
+	Next
+
+	spnCategory.SelectedIndex = spnCategory.Size - 1
+End Sub
+
+Private Sub ListToStringArray(Items As List) As String()
+	Dim arr(Items.Size) As String
+
+	For i = 0 To Items.Size - 1
+		arr(i) = "" & Items.Get(i)
+	Next
+
+	Return arr
+End Sub
+
+Private Sub ResetListFilters
+	If txtSearch.IsInitialized Then
+		txtSearch.Text = ""
+	End If
+
+	If spnFilter.IsInitialized Then
+		spnFilter.SelectedIndex = 0
+	End If
+End Sub
+
+Private Sub ResizeRecipeList
+	If lvRecipes.IsInitialized = False Then Return
+	If pnlList.IsInitialized = False Then Return
+	If sv.IsInitialized = False Then Return
+
+	Dim itemH As Int = 52dip
+	Dim newListH As Int = lvRecipes.Size * itemH
+
+	If newListH < 180dip Then
+		newListH = 180dip
+	End If
+
+	lvRecipes.Height = newListH
+	pnlList.Height = 230dip + newListH
+	sv.Panel.Height = 626dip + pnlList.Height + 30dip
+End Sub
+
+Private Sub LoadRecipes
+	If SQL1.IsInitialized = False Then Return
+	If lvRecipes.IsInitialized = False Then Return
+
+	lvRecipes.Clear
+
+	Dim sqlQuery As String = "SELECT id, name, IFNULL(category, 'Other') AS category, IFNULL(is_favorite, 0) AS is_favorite FROM recipes WHERE 1 = 1"
+	Dim args As List
+	args.Initialize
+
+	If txtSearch.IsInitialized Then
+		Dim keyword As String = txtSearch.Text.Trim
+
+		If keyword <> "" Then
+			sqlQuery = sqlQuery & " AND name LIKE ?"
+			args.Add("%" & keyword & "%")
+		End If
+	End If
+
+	If spnFilter.IsInitialized Then
+		If spnFilter.SelectedIndex > 0 Then
+			sqlQuery = sqlQuery & " AND IFNULL(category, 'Other') = ?"
+			args.Add(spnFilter.GetItem(spnFilter.SelectedIndex))
+		End If
+	End If
+
+	sqlQuery = sqlQuery & " ORDER BY IFNULL(is_favorite, 0) DESC, name COLLATE NOCASE"
+
+	Dim rs As Cursor
+
+	If args.Size = 0 Then
+		rs = SQL1.ExecQuery(sqlQuery)
+	Else
+		rs = SQL1.ExecQuery2(sqlQuery, ListToStringArray(args))
+	End If
+
+	For i = 0 To rs.RowCount - 1
+		rs.Position = i
+
+		Dim recipeName As String = rs.GetString("name")
+		Dim category As String = rs.GetString("category")
+		Dim isFavorite As Int = rs.GetInt("is_favorite")
+
+		Dim displayText As String = recipeName
+
+		If isFavorite = 1 Then
+			displayText = "★ " & displayText
+		End If
+
+		If category <> "" Then
+			displayText = displayText & "  ·  " & category
+		End If
+
+		lvRecipes.AddSingleLine2(displayText, rs.GetInt("id"))
+	Next
+
+	rs.Close
+
+	If lvRecipes.Size = 0 Then
+		lvRecipes.AddSingleLine2("No recipes found.", -1)
+	End If
+
+	ResizeRecipeList
+End Sub
+
+Private Sub ClearForm
+	SelectedRecipeId = -1
+
+	txtName.Text = ""
+	txtIngredients.Text = ""
+	txtInstructions.Text = ""
+
+	If spnCategory.IsInitialized Then
+		spnCategory.SelectedIndex = 5
+	End If
+
+	If chkFavorite.IsInitialized Then
+		chkFavorite.Checked = False
+	End If
+
+	btnSave.Text = "Save"
+End Sub
+
+Sub btnSave_Click
+	Dim recipeName As String = txtName.Text.Trim
+	Dim ingredients As String = txtIngredients.Text.Trim
+	Dim instructions As String = txtInstructions.Text.Trim
+	Dim category As String = GetSelectedCategory
+
+	If recipeName = "" Or ingredients = "" Or instructions = "" Then
+		xui.MsgboxAsync("Please complete all fields before saving.", "Missing Information")
+		Return
+	End If
+
+	Dim favoriteValue As Int = 0
+
+	If chkFavorite.Checked Then
+		favoriteValue = 1
+	End If
+
+	If SelectedRecipeId = -1 Then
+		SQL1.ExecNonQuery2("INSERT INTO recipes (name, ingredients, instructions, category, is_favorite) VALUES (?, ?, ?, ?, ?)", _
+			Array As Object(recipeName, ingredients, instructions, category, favoriteValue))
+
+		ToastMessageShow("Recipe added.", False)
+	Else
+		SQL1.ExecNonQuery2("UPDATE recipes SET name = ?, ingredients = ?, instructions = ?, category = ?, is_favorite = ? WHERE id = ?", _
+			Array As Object(recipeName, ingredients, instructions, category, favoriteValue, SelectedRecipeId))
+
+		ToastMessageShow("Recipe updated.", False)
+	End If
+
+	ResetListFilters
+	LoadRecipes
+	ClearForm
+End Sub
+
+Sub btnDelete_Click
+	If SelectedRecipeId = -1 Then
+		xui.MsgboxAsync("Select a recipe from the list first.", "Nothing Selected")
+		Return
+	End If
+
+	Dim sf As Object = xui.Msgbox2Async("Are you sure you want to delete this recipe?", "Confirm Delete", "Delete", "Cancel", "", Null)
+	Wait For (sf) Msgbox_Result (Result As Int)
+
+	If Result = xui.DialogResponse_Positive Then
+		SQL1.ExecNonQuery2("DELETE FROM recipes WHERE id = ?", Array As Object(SelectedRecipeId))
+
+		ToastMessageShow("Recipe deleted.", False)
+
+		ResetListFilters
+		LoadRecipes
+		ClearForm
+	End If
+End Sub
+
+Sub btnClear_Click
+	ClearForm
+End Sub
+
+Sub txtSearch_TextChanged (Old As String, New As String)
+	LoadRecipes
+End Sub
+
+Sub spnFilter_ItemClick (Position As Int, Value As Object)
+	LoadRecipes
+End Sub
+
+Sub lvRecipes_ItemClick (Position As Int, Value As Object)
+	Dim recipeId As Int = Value
+
+	If recipeId = -1 Then Return
+
+	SelectedRecipeId = recipeId
+
+	Dim rs As Cursor
+	rs = SQL1.ExecQuery2("SELECT name, ingredients, instructions, IFNULL(category, 'Other') AS category, IFNULL(is_favorite, 0) AS is_favorite FROM recipes WHERE id = ?", Array As String("" & recipeId))
+
+	If rs.RowCount > 0 Then
+		rs.Position = 0
+
+		txtName.Text = rs.GetString("name")
+		txtIngredients.Text = rs.GetString("ingredients")
+		txtInstructions.Text = rs.GetString("instructions")
+
+		SetCategorySpinner(rs.GetString("category"))
+
+		If rs.GetInt("is_favorite") = 1 Then
+			chkFavorite.Checked = True
+		Else
+			chkFavorite.Checked = False
+		End If
+
+		btnSave.Text = "Update"
+	End If
+
+	rs.Close
+End Sub
